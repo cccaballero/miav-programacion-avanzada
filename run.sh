@@ -2,19 +2,26 @@
 
 
 run_calc () {
+
+    secuential="python3 main.py $1 $2 --secuential > /dev/null"
+    mpi="mpiexec -n 4 python main.py $1 $2 --mpi > /dev/null"
+    multiprocessing="python main.py $1 $2 --multiprocessing > /dev/null"
+
+    myString=$(printf "%10s")
+
     echo ''
     echo "Función $1, n=$2"
     echo ''
     echo '---- secuencial -----'
-    time python3 main.py $1 $2 --secuential
+    /usr/bin/time -f "mem=%K RSS=%M time=%E cpu.sys=%S" /bin/sh -c "${myString// /$secuential;}"
 
     echo ''
     echo '---- mpi -----'
-    time mpiexec -n 4 python main.py $1 $2 --mpi
+    /usr/bin/time -f "mem=%K RSS=%M time=%E cpu.sys=%S" /bin/sh -c "${myString// /$mpi;}"
 
     echo ''
     echo '---- multiprocessing -----'
-    time python main.py $1 $2 --multiprocessing
+    /usr/bin/time -f "mem=%K RSS=%M time=%E cpu.sys=%S" /bin/sh -c "${myString// /$multiprocessing;}"
 
     echo '-------------------------------'
 }
