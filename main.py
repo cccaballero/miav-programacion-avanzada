@@ -19,27 +19,23 @@ def secuential_integrate(a,b,n,func):
 def mpi_integrate(a, b, n, func):
     import numpy
 
-    n = n//4
-
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    def integral(a_i, h, n):
+    n = n//size
+
+    def integral(a, h, n):
         integ = 0.0
         for j in range(n):
-            a_ij = a_i + (j + 0.5) * h
-            # a_ij = a_i + j * h
-            integ += func(a_ij) * h
+            a_j = a + (j+n*rank) * h
+            integ += func(a_j)
         return integ
 
     h = (b - a) / (n * size)
-    a_i = a + rank * n * h
 
     # All processes initialize my_int with their partition calculation
-    my_int = numpy.full(1, integral(a_i, h, n))
-
-    # print("Process ", rank, " has the partial integral ", my_int[0])
+    my_int = numpy.full(1, integral(a, h, n))
 
     if rank == 0:
         # Process 0 receives all the partitions and computes the sum
@@ -47,6 +43,7 @@ def mpi_integrate(a, b, n, func):
         for p in range(1, size):
             comm.Recv(my_int, source=p)
             integral_sum += my_int[0]
+        integral_sum = integral_sum * h
 
         print(integral_sum)
     else:
@@ -58,12 +55,10 @@ def mpi_integrate(a, b, n, func):
 _func = None
 
 def multiprocessing_integral(a, h, n, rank):
-    a_i = a + rank * n * h
     integ = 0.0
     for j in range(n):
-        a_ij = a_i + (j + 0.5) * h
-        # a_ij = a_i + j * h
-        integ += _func(a_ij) * h
+        a_j = a + (j+n*rank) * h
+        integ += _func(a_j)
     return integ
 
 
@@ -82,6 +77,7 @@ def multiprocessing_integrate(a, b, n, func):
     integral_sum = 0.0
     for integral_value in integral_values:
         integral_sum += integral_value
+    integral_sum = integral_sum * h
     return integral_sum
 
 if __name__ == '__main__':
@@ -106,8 +102,8 @@ if __name__ == '__main__':
 
     functions = {
         1: (
-            0 if not args.avalue else args.avalue,
-            4 if not args.bvalue else args.bvalue,
+            0.0 if not args.avalue else args.avalue,
+            4.0 if not args.bvalue else args.bvalue,
             lambda x: x**2+math.cos(x)
             ),
         2: (
@@ -116,8 +112,8 @@ if __name__ == '__main__':
             lambda x: (8*math.e**(1-x))+(7*math.log(x))
             ),
         3: (
-            -2 if not args.avalue else args.avalue,
-            2 if not args.bvalue else args.bvalue,
+            -2.0 if not args.avalue else args.avalue,
+            2.0 if not args.bvalue else args.bvalue,
             lambda x: 10+x**2-10*math.cos(math.pi*x)**2
             ),
     }
